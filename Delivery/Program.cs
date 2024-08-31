@@ -1,4 +1,7 @@
-﻿// Базовый класс доставки
+﻿using System;
+using System.Collections.Generic;
+
+// Базовый класс доставки
 abstract class Delivery
 {
     protected string Address;
@@ -22,9 +25,9 @@ abstract class Delivery
 // Доставка на дом
 class HomeDelivery : Delivery
 {
-    private Courier Courier;
+    private DeliveryPoint Courier;
 
-    public HomeDelivery(string address, Courier courier) : base(address)
+    public HomeDelivery(string address, DeliveryPoint courier) : base(address)
     {
         Courier = courier;
     }
@@ -44,26 +47,26 @@ class HomeDelivery : Delivery
 // Доставка в пункт выдачи
 class PickPointDelivery : Delivery
 {
-    private PickPoint PickPoint;
+    private DeliveryPoint DeliveryPoint;
 
-    public PickPointDelivery(string address, PickPoint pickPoint) : base(address)
+    public PickPointDelivery(string address, DeliveryPoint deliveryPoint) : base(address)
     {
-        PickPoint = pickPoint;
+        DeliveryPoint = deliveryPoint;
     }
 
     public override void DisplayAddress()
     {
         Console.WriteLine("Доставка в пункт выдачи: {0}", Address);
-        Console.WriteLine("Название пункта выдачи: {0}", PickPoint.Name);
+        Console.WriteLine("Название пункта выдачи: {0}", DeliveryPoint.Name);
     }
 }
 
 // Доставка в розничный магазин
 class ShopDelivery : Delivery
 {
-    private Shop Shop;
+    private DeliveryPoint Shop;
 
-    public ShopDelivery(string address, Shop shop) : base(address)
+    public ShopDelivery(string address, DeliveryPoint shop) : base(address)
     {
         Shop = shop;
     }
@@ -75,49 +78,45 @@ class ShopDelivery : Delivery
     }
 }
 
-// Класс курьера
-class Courier
+// Базовый класс для всех точек доставки
+abstract class DeliveryPoint
 {
     public string Name { get; private set; }
 
-    public Courier(string name)
+    protected DeliveryPoint(string name)
     {
         Name = name;
     }
 }
 
-// Класс пункта выдачи
-class PickPoint
+// Курьер наследуется от DeliveryPoint
+class Courier : DeliveryPoint
 {
-    public string Name { get; private set; }
-
-    public PickPoint(string name)
-    {
-        Name = name;
-    }
+    public Courier(string name) : base(name) { }
 }
 
-// Класс магазина
-class Shop
+// Пункт выдачи наследуется от DeliveryPoint
+class PickPoint : DeliveryPoint
 {
-    public string Name { get; private set; }
+    public PickPoint(string name) : base(name) { }
+}
 
-    public Shop(string name)
-    {
-        Name = name;
-    }
+// Магазин наследуется от DeliveryPoint
+class Shop : DeliveryPoint
+{
+    public Shop(string name) : base(name) { }
 }
 
 // Класс заказа
-class Order
+class Order<TDelivery> where TDelivery : Delivery
 {
     private static int NextOrderNumber = 1;
 
     public int Number { get; private set; }
-    public Delivery Delivery { get; private set; }
+    public TDelivery Delivery { get; private set; }
     public Customer Customer { get; private set; }
     public List<Product> Items { get; private set; } = new List<Product>();
-    public OrderStatus Status { get; private set; } = OrderStatus.Processing;
+    public OrderStatus Status { get; private set; } = OrderStatus.Pending;
     public double TotalCost { get; private set; } = 0;
 
     // Статический метод генерации номера заказа
@@ -127,7 +126,7 @@ class Order
     }
 
     // Конструктор класса Order
-    public Order(Delivery delivery, Customer customer)
+    public Order(TDelivery delivery, Customer customer)
     {
         Number = GenerateOrderNumber();
         Delivery = delivery;
@@ -191,7 +190,7 @@ class Product
     }
 }
 
-// Статусы заказов
+// Перечисление статусов заказа
 enum OrderStatus
 {
     Pending, // Ожидает обработки
@@ -206,16 +205,33 @@ class Program
 {
     static void Main(string[] args)
     {
-        // Создание нового заказа
-        Order order = new Order(new HomeDelivery("Улица Ленина, 123", new Courier("Иван Иванов")),
-                               new Customer("Иван Петров", "petrov@mail.com", "1234567890", "Улица Пушкина, 1"));
+        // Создание нового заказа с доставкой на дом
+        Order<HomeDelivery> homeDeliveryOrder = new Order<HomeDelivery>(
+            new HomeDelivery("Улица Ленина, 123", new Courier("Иван Иванов")),
+            new Customer("Иван Петров", "petrov@example.com", "1234567890", "Улица Пушкина, 1")
+        );
 
         // Добавление товаров в заказ
-        order.AddItem(new Product("Товар 1", "Описание товара 1", 100.0, 1));
-        order.AddItem(new Product("Товар 2", "Описание товара 2", 50.0, 2));
+        homeDeliveryOrder.AddItem(new Product("Товар 1", "Описание товара 1", 100.0, 1));
+        homeDeliveryOrder.AddItem(new Product("Товар 2", "Описание товара 2", 50.0, 2));
 
         // Вывод информации о заказе
-        order.DisplayOrderInfo();
+        homeDeliveryOrder.DisplayOrderInfo();
+
+        Console.WriteLine();
+
+        // Создание нового заказа с доставкой в пункт выдачи
+        Order<PickPointDelivery> pickPointDeliveryOrder = new Order<PickPointDelivery>(
+            new PickPointDelivery("Улица Пушкина, 1", new PickPoint("Пункт выдачи №1")),
+            new Customer("Петр Сидоров", "sidoro@example.com", "9876543210", "Улица Лермонтова, 2")
+        );
+
+        // Добавление товаров в заказ
+        pickPointDeliveryOrder.AddItem(new Product("Товар 3", "Описание товара 3", 200.0, 3));
+        pickPointDeliveryOrder.AddItem(new Product("Товар 4", "Описание товара 4", 150.0, 1));
+
+        // Вывод информации о заказе
+        pickPointDeliveryOrder.DisplayOrderInfo();
 
         Console.ReadKey();
     }
